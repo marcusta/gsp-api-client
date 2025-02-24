@@ -1,38 +1,45 @@
-import React, { useState } from 'react';
-import { clubs } from './clubs';
-import { Club, ShotData, BallData } from './types';
+import React, { useState } from "react";
+import { clubs, applyRandomVariation } from "./clubs";
+import { Club, ShotData, BallData } from "./types";
 
 export default function App() {
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
+  const [originalClub, setOriginalClub] = useState<Club | null>(null);
   const [ballData, setBallData] = useState<BallData>({
     Speed: 0,
     SpinAxis: 0.0,
     TotalSpin: 0,
     HLA: 0.0,
-    VLA: 0
+    VLA: 0,
   });
-  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState<string>("");
 
   const handleClubSelect = (club: Club) => {
-    setSelectedClub(club);
+    // Store the original club values
+    setOriginalClub(club);
+    // Apply random variations when selecting the club
+    const randomizedClub = applyRandomVariation(club);
+    setSelectedClub(randomizedClub);
     setBallData({
       ...ballData,
-      Speed: (club.speedMin + club.speedMax) / 2,
-      TotalSpin: (club.spinMin + club.spinMax) / 2,
-      VLA: (club.vlaMin + club.vlaMax) / 2
+      Speed: randomizedClub.ballSpeed,
+      TotalSpin: randomizedClub.spin,
+      VLA: randomizedClub.vla,
+      HLA: randomizedClub.hla || 0,
+      SpinAxis: randomizedClub.spinAxis || 0,
     });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     // Allow empty string to handle backspace/delete
-    const newValue = value === '' ? 0 : parseFloat(value);
-    
+    const newValue = value === "" ? 0 : parseFloat(value);
+
     // Only update if it's a valid number
     if (!isNaN(newValue)) {
-      setBallData(prev => ({
+      setBallData((prev) => ({
         ...prev,
-        [name]: newValue
+        [name]: newValue,
       }));
     }
   };
@@ -48,41 +55,58 @@ export default function App() {
       BallData: ballData,
       ShotDataOptions: {
         ContainsBallData: true,
-        ContainsClubData: false
-      }
+        ContainsClubData: false,
+      },
     };
 
     try {
-      const response = await fetch('/shot', {
-        method: 'POST',
+      const response = await fetch("/shot", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(shotData),
       });
 
       if (!response.ok) {
-        throw new Error('Shot failed');
+        throw new Error("Shot failed");
       }
 
-      setStatusMessage('Shot made successfully');
-      setTimeout(() => setStatusMessage(''), 3000);
+      setStatusMessage("Shot made successfully");
+      setTimeout(() => setStatusMessage(""), 3000);
     } catch (error) {
-      console.error('Error sending shot:', error);
-      setStatusMessage('Failed to send shot');
-      setTimeout(() => setStatusMessage(''), 3000);
+      console.error("Error sending shot:", error);
+      setStatusMessage("Failed to send shot");
+      setTimeout(() => setStatusMessage(""), 3000);
     }
+  };
+
+  const calculateVariationPercent = (current: number, base: number): string => {
+    if (!base) return "0%";
+    const variation =
+      ((current - originalClub?.[getBaseProperty(current)] || base) / base) *
+      100;
+    return `${variation > 0 ? "+" : ""}${variation.toFixed(1)}%`;
+  };
+
+  // Helper function to get the corresponding base property
+  const getBaseProperty = (current: number): keyof Club => {
+    if (current === ballData.Speed) return "ballSpeed";
+    if (current === ballData.TotalSpin) return "spin";
+    return "vla";
   };
 
   return (
     <div className="container p-4">
       <h1 className="title">Golf Shot Simulator</h1>
-      
+
       <div className="buttons">
-        {clubs.map(club => (
+        {clubs.map((club) => (
           <button
             key={club.name}
-            className={`button ${selectedClub?.name === club.name ? 'is-primary' : ''}`}
+            className={`button ${
+              selectedClub?.name === club.name ? "is-primary" : ""
+            }`}
             onClick={() => handleClubSelect(club)}
           >
             {club.name}
@@ -93,46 +117,64 @@ export default function App() {
       {selectedClub && (
         <div className="box">
           <h2 className="subtitle">Shot Configuration - {selectedClub.name}</h2>
-          
+
           <div className="field">
             <label className="label">Ball Speed</label>
-            <div className="control">
+            <div className="control is-flex is-align-items-center">
               <input
                 type="number"
                 className="input"
                 name="Speed"
-                value={ballData.Speed || ''}
+                value={ballData.Speed || ""}
                 onChange={handleInputChange}
                 step="1"
               />
+              <span className="ml-2">
+                {calculateVariationPercent(
+                  ballData.Speed,
+                  originalClub?.ballSpeed || 0
+                )}
+              </span>
             </div>
           </div>
 
           <div className="field">
             <label className="label">Total Spin</label>
-            <div className="control">
+            <div className="control is-flex is-align-items-center">
               <input
                 type="number"
                 className="input"
                 name="TotalSpin"
-                value={ballData.TotalSpin || ''}
+                value={ballData.TotalSpin || ""}
                 onChange={handleInputChange}
                 step="100"
               />
+              <span className="ml-2">
+                {calculateVariationPercent(
+                  ballData.TotalSpin,
+                  originalClub?.spin || 0
+                )}
+              </span>
             </div>
           </div>
 
           <div className="field">
             <label className="label">Vertical Launch Angle</label>
-            <div className="control">
+            <div className="control is-flex is-align-items-center">
               <input
                 type="number"
                 className="input"
                 name="VLA"
-                value={ballData.VLA || ''}
+                value={ballData.VLA || ""}
                 onChange={handleInputChange}
                 step="1"
               />
+              <span className="ml-2">
+                {calculateVariationPercent(
+                  ballData.VLA,
+                  originalClub?.vla || 0
+                )}
+              </span>
             </div>
           </div>
 
@@ -143,7 +185,7 @@ export default function App() {
                 type="number"
                 className="input"
                 name="HLA"
-                value={ballData.HLA || ''}
+                value={ballData.HLA || ""}
                 onChange={handleInputChange}
                 step="0.1"
               />
@@ -157,7 +199,7 @@ export default function App() {
                 type="number"
                 className="input"
                 name="SpinAxis"
-                value={ballData.SpinAxis || ''}
+                value={ballData.SpinAxis || ""}
                 onChange={handleInputChange}
                 step="0.1"
               />
@@ -165,7 +207,11 @@ export default function App() {
           </div>
 
           {statusMessage && (
-            <div className={`notification ${statusMessage.includes('Failed') ? 'is-danger' : 'is-success'} is-light`}>
+            <div
+              className={`notification ${
+                statusMessage.includes("Failed") ? "is-danger" : "is-success"
+              } is-light`}
+            >
               {statusMessage}
             </div>
           )}
@@ -177,6 +223,4 @@ export default function App() {
       )}
     </div>
   );
-} 
-
-
+}

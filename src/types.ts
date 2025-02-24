@@ -1,13 +1,10 @@
 export interface Club {
   name: string;
-  spinMin: number;
-  spinMax: number;
-  speedMin: number;
-  speedMax: number;
-  vlaMin: number;
-  vlaMax: number;
-  carryMin: number;
-  carryMax: number;
+  spin: number;
+  ballSpeed: number;
+  vla: number;
+  hla?: number;
+  spinAxis?: number;
 }
 
 export interface BallData {
@@ -28,4 +25,4 @@ export interface ShotData {
     ContainsBallData: boolean;
     ContainsClubData: boolean;
   };
-} 
+}
