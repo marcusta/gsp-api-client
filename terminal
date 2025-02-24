@@ -1,0 +1,3 @@
+mkdir golf-simulator-client
+cd golf-simulator-client
+npm init -y 
